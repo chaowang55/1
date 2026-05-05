@@ -1,7 +1,6 @@
 package uk.ac.ncl.csc8019.team4.order;
 
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -25,7 +24,7 @@ class FullOrderFlowTest extends BaseIntegrationTest {
     void fullOrderLifecycleWorksFromCustomerOrderToArchive() throws Exception {
         Integer orderId = createOrder();
 
-        mockMvc.perform(get("/api/orders/dashboard").with(user("Admin").roles("STAFF")))
+        mockMvc.perform(get("/api/orders/dashboard"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()", greaterThanOrEqualTo(1)));
 
@@ -38,7 +37,7 @@ class FullOrderFlowTest extends BaseIntegrationTest {
                 .andExpect(status().isOk()) // Bug 3 fix: was isCreated()
                 .andExpect(jsonPath("$.status").value("COLLECTED"));
 
-        mockMvc.perform(get("/api/orders/archive").with(user("Admin").roles("STAFF")))
+        mockMvc.perform(get("/api/orders/archive"))
                 .andExpect(status().isOk()) // Bug 4 fix: was isCreated()
                 .andExpect(jsonPath("$.length()", greaterThanOrEqualTo(1)));
     }
@@ -81,8 +80,7 @@ class FullOrderFlowTest extends BaseIntegrationTest {
 
     private void updateStatus(Integer orderId, String status) throws Exception {
         // Bug 1 fix: pass status as query param, not request body
-        mockMvc.perform(patch("/api/orders/" + orderId + "/status?status=" + status)
-                        .with(user("Admin").roles("STAFF")))
+        mockMvc.perform(patch("/api/orders/" + orderId + "/status?status=" + status))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(status));
     }

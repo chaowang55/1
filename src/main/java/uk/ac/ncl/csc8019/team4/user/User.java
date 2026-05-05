@@ -25,9 +25,6 @@ public class User {
     @Column(name = "user_role", nullable = false, length = 20)
     private UserRole role = UserRole.CUSTOMER;
 
-    @Column(name = "cup_count", nullable = false)
-    private int cupCount = 0;
-
     protected User() {}
 
     public User(String fullName, String email, String passwordHash, UserRole userRole) {
@@ -55,13 +52,5 @@ public class User {
 
     public UserRole getRole() {
         return role;
-    }
-
-    public int getCupCount() {
-        return cupCount;
-    }
-
-    public void setCupCount(int cupCount) {
-        this.cupCount = cupCount;
     }
 }

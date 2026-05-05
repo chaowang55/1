@@ -1,5 +1,8 @@
 package uk.ac.ncl.csc8019.team4.auth;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.Optional;
 import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -25,7 +28,7 @@ public class AuthService {
         return users.save(new User(fullName, email.toLowerCase(), hash, UserRole.CUSTOMER));
     }
 
-    public User login(String email, String password, UserRole expectedRole) {
+    public User login(String email, String password) {
         User user = users.findByEmail(email.toLowerCase())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid details."));
 
@@ -33,12 +36,27 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid details.");
         }
 
-        if (expectedRole != null && user.getRole() != expectedRole) {
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "This account is not a " + expectedRole.name().toLowerCase() + " account.");
+        return user;
+    }
+
+    public Optional<User> authenticate(String header) {
+        if (header == null || !header.startsWith("Basic ")) {
+            return Optional.empty();
         }
 
-        return user;
+        String decoded;
+        try {
+            decoded =
+                    new String(Base64.getDecoder().decode(header.substring("Basic ".length())), StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid auth header.");
+        }
+
+        int colon = decoded.indexOf(":");
+        if (colon < 0) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid auth header.");
+        }
+
+        return Optional.of(login(decoded.substring(0, colon), decoded.substring(colon + 1)));
     }
 }

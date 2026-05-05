@@ -5,13 +5,13 @@ import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
+
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-import uk.ac.ncl.csc8019.team4.auth.Principal;
-import uk.ac.ncl.csc8019.team4.auth.StaffLock;
+import uk.ac.ncl.csc8019.team4.auth.AuthService;
 import uk.ac.ncl.csc8019.team4.location.KioskLocation;
 import uk.ac.ncl.csc8019.team4.location.KioskLocationRepository;
 import uk.ac.ncl.csc8019.team4.location.OperatingStatus;
@@ -20,8 +20,6 @@ import uk.ac.ncl.csc8019.team4.menu.MenuItemRepository;
 import uk.ac.ncl.csc8019.team4.payment.PaymentMethod;
 import uk.ac.ncl.csc8019.team4.payment.PaymentService;
 import uk.ac.ncl.csc8019.team4.payment.PaymentStatus;
-import uk.ac.ncl.csc8019.team4.user.User;
-import uk.ac.ncl.csc8019.team4.user.UserRepository;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -33,7 +31,7 @@ public class OrderController {
     private final MenuItemRepository menuItems;
     private final OpeningHoursService openingHours;
     private final KioskLocationRepository locations;
-    private final UserRepository users;
+    private final AuthService auth;
     private final PaymentService paymentService;
 
     public OrderController(
@@ -41,13 +39,13 @@ public class OrderController {
             MenuItemRepository menuItems,
             OpeningHoursService openingHours,
             KioskLocationRepository locations,
-            UserRepository users,
+            AuthService auth,
             PaymentService paymentService) {
         this.orders = orders;
         this.menuItems = menuItems;
         this.openingHours = openingHours;
         this.locations = locations;
-        this.users = users;
+        this.auth = auth;
         this.paymentService = paymentService;
     }
 
@@ -59,16 +57,17 @@ public class OrderController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @Transactional
-    public Order place(@Valid @RequestBody PlaceOrderRequest req, @AuthenticationPrincipal Principal me) {
+    public Order place(
+            @Valid @RequestBody PlaceOrderRequest req,
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authHeader) {
 
         if (!openingHours.isOpen(req.pickupTime())) {
             throw new ResponseStatusException(
-                    HttpStatus.UNPROCESSABLE_CONTENT, "The kiosk is closed at the requested pick-up time.");
+                    HttpStatus.UNPROCESSABLE_ENTITY, "The kiosk is closed at the requested pick-up time.");
         }
 
         if (req.pickupTime().isBefore(LocalDateTime.now())) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT, "Pick-up time must be in the future.");
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "Pick-up time must be in the future.");
         }
 
         KioskLocation location = req.kioskLocationId() == null
@@ -79,65 +78,52 @@ public class OrderController {
                 : locations
                         .findById(req.kioskLocationId())
                         .orElseThrow(() -> new ResponseStatusException(
-                                HttpStatus.UNPROCESSABLE_CONTENT,
-                                "Kiosk location not found: " + req.kioskLocationId()));
+                                HttpStatus.UNPROCESSABLE_ENTITY, "Kiosk location not found: " + req.kioskLocationId()));
 
-        Order order;
-        User user = null;
-        if (me != null) {
-            user = users.findById(me.userId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
-            order = new Order(user, req.pickupTime(), location);
-        } else {
-            // Guest Order
-            if (req.customerName() == null
-                    || req.customerName().isBlank()
-                    || req.customerEmail() == null
-                    || req.customerEmail().isBlank()) {
-                throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT, "Name and Email required.");
-            }
-            order = new Order(req.customerName(), req.customerEmail(), req.pickupTime(), location);
-        }
+        Order order = auth.authenticate(authHeader)
+                .map(user -> new Order(user, req.pickupTime(), location))
+                .orElseGet(() -> {
+                    // @NotBlank on the request fields forces registered users to also send name/email
+                    // Instead we just check the guest path ourselves
+                    if (req.customerName() == null
+                            || req.customerName().isBlank()
+                            || req.customerEmail() == null
+                            || req.customerEmail().isBlank()) {
+                        throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "Name and Email required.");
+                    }
+                    return new Order(req.customerName(), req.customerEmail(), req.pickupTime(), location);
+                });
 
         for (PlaceOrderRequest.LineItemRequest line : req.items()) {
             MenuItem item = menuItems
                     .findById(line.menuItemId())
                     .orElseThrow(() -> new ResponseStatusException(
-                            HttpStatus.UNPROCESSABLE_CONTENT, "Menu item not found: " + line.menuItemId()));
+                            HttpStatus.UNPROCESSABLE_ENTITY, "Menu item not found: " + line.menuItemId()));
 
             if (!item.isAvailable()) {
                 throw new ResponseStatusException(
-                        HttpStatus.UNPROCESSABLE_CONTENT, "Menu item is currently unavailable: " + item.getName());
+                        HttpStatus.UNPROCESSABLE_ENTITY, "Menu item is currently unavailable: " + item.getName());
             }
 
             BigDecimal price = resolvePrice(item, line.size());
             order.addItem(new OrderItem(order, item, line.size(), line.quantity(), price, line.customisationNote()));
+
         }
 
-        BigDecimal totalCost =
-                order.getItems().stream().map(OrderItem::getLineTotal).reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        int orderCups =
-                order.getItems().stream().mapToInt(OrderItem::getQuantity).sum();
-        boolean freeCup = (me != null) ? user.getCupCount() + orderCups >= 10 : orderCups >= 10;
-
-        if (freeCup) {
-            BigDecimal cheapest = order.getItems().stream()
-                    .map(OrderItem::getUnitPrice)
-                    .min(BigDecimal::compareTo)
-                    .orElseThrow();
-            order.setDiscountAmount(cheapest);
-            totalCost = totalCost.subtract(cheapest);
+        BigDecimal rawTotal = order.getItems().stream()
+            .map(item -> item.getUnitPrice().multiply(new BigDecimal(item.getQuantity())))
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        Optional<BigDecimal> cheapest = order.getItems().stream()
+            .map(OrderItem::getUnitPrice)
+            .min(BigDecimal::compareTo);
+        BigDecimal finalTotal = rawTotal;
+        if (order.getItems().stream().mapToInt(OrderItem::getQuantity).sum() >= 10) {
+            finalTotal = rawTotal.subtract(cheapest.orElse(BigDecimal.ZERO));
         }
-        order.setTotalCost(totalCost);
+        order.setTotalCost(finalTotal);
 
         Order saved = orders.save(order);
 
-        if (me != null) {
-            int newCount = user.getCupCount() + orderCups - (freeCup ? 10 : 0);
-            user.setCupCount(newCount);
-            users.save(user);
-        }
         if (req.paymentMethod() == PaymentMethod.CARD) {
             if (paymentService.chargeCard(saved).getStatus() == PaymentStatus.FAILED) {
                 throw new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "Card payment declined.");
@@ -149,17 +135,12 @@ public class OrderController {
     }
 
     /**
-     * Customer looks up their orders
-     * GET /api/orders
+     * Customer looks up their orders by email.
+     * GET /api/orders?email=...
      */
     @GetMapping
-    public List<Order> listMyOrders(@AuthenticationPrincipal Principal me) {
-        if (me == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sign in required.");
-        }
-        User user = users.findById(me.userId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found."));
-        return orders.findAllByCustomerEmail(user.getEmail());
+    public List<Order> listByEmail(@RequestParam @Email @NotBlank String email) {
+        return orders.findAllByCustomerEmail(email);
     }
 
     /**
@@ -178,7 +159,6 @@ public class OrderController {
      * GET /api/orders/dashboard
      */
     @GetMapping("/dashboard")
-    @StaffLock
     public List<Order> dashboard() {
         return orders.findAllByStatusNotInOrderByPickupTimeAsc(ARCHIVED_STATUSES);
     }
@@ -188,7 +168,6 @@ public class OrderController {
      * GET /api/orders/archive
      */
     @GetMapping("/archive")
-    @StaffLock
     public List<Order> archive() {
         return orders.findAllByStatusInOrderByPickupTimeDesc(ARCHIVED_STATUSES);
     }
@@ -198,7 +177,6 @@ public class OrderController {
      * PATCH /api/orders/{id}/status
      */
     @PatchMapping("/{id}/status")
-    @StaffLock
     public Order updateStatus(@PathVariable Long id, @RequestParam OrderStatus status) {
         Order order = findOrThrow(id);
         if (!order.getStatus().canTransitionTo(status)) {
@@ -214,7 +192,6 @@ public class OrderController {
      * PATCH /api/orders/{id}/cancel
      */
     @PatchMapping("/{id}/cancel")
-    @StaffLock
     public Order cancel(@PathVariable Long id, @RequestBody(required = false) CancelRequest req) {
         Order order = findOrThrow(id);
         if (order.getStatus() == OrderStatus.COLLECTED) {
@@ -241,13 +218,13 @@ public class OrderController {
             case REGULAR -> {
                 if (item.getRegularPrice() == null)
                     throw new ResponseStatusException(
-                            HttpStatus.UNPROCESSABLE_CONTENT, item.getName() + " does not have a regular size.");
+                            HttpStatus.UNPROCESSABLE_ENTITY, item.getName() + " does not have a regular size.");
                 yield item.getRegularPrice();
             }
             case LARGE -> {
                 if (item.getLargePrice() == null)
                     throw new ResponseStatusException(
-                            HttpStatus.UNPROCESSABLE_CONTENT, item.getName() + " does not have a large size.");
+                            HttpStatus.UNPROCESSABLE_ENTITY, item.getName() + " does not have a large size.");
                 yield item.getLargePrice();
             }
         };

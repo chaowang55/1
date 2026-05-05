@@ -45,9 +45,6 @@ public class Order {
     @Column(name = "total_cost", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalCost = BigDecimal.ZERO;
 
-    @Column(name = "discount_amount", nullable = false, precision = 5, scale = 2)
-    private BigDecimal discountAmount = BigDecimal.ZERO;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private OrderStatus status = OrderStatus.PENDING;
@@ -147,13 +144,5 @@ public class Order {
 
     public void setCancellationReason(String reason) {
         this.cancellationReason = reason;
-    }
-
-    public BigDecimal getDiscountAmount() {
-        return discountAmount;
-    }
-
-    public void setDiscountAmount(BigDecimal discountAmount) {
-        this.discountAmount = discountAmount;
     }
 }
