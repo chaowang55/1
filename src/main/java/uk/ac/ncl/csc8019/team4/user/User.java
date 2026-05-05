@@ -25,6 +25,10 @@ public class User {
     @Column(name = "user_role", nullable = false, length = 20)
     private UserRole role = UserRole.CUSTOMER;
 
+    // ✅ 修复：添加缺失的 cupCount 字段
+    @Column(name = "cup_count", nullable = false)
+    private Integer cupCount = 0;
+
     protected User() {}
 
     public User(String fullName, String email, String passwordHash, UserRole userRole) {
@@ -32,6 +36,7 @@ public class User {
         this.email = email;
         this.passwordHash = passwordHash;
         this.role = userRole;
+        this.cupCount = 0; // 初始化
     }
 
     public Long getId() {
@@ -52,5 +57,15 @@ public class User {
 
     public UserRole getRole() {
         return role;
+    }
+
+    // ✅ 修复：添加缺失的 getCupCount 方法
+    public Integer getCupCount() {
+        return cupCount;
+    }
+
+    // 可选：添加 setter（如果业务需要修改杯子数量）
+    public void setCupCount(Integer cupCount) {
+        this.cupCount = cupCount;
     }
 }
