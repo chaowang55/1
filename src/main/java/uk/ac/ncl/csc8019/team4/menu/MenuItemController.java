@@ -10,6 +10,7 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import uk.ac.ncl.csc8019.team4.auth.StaffLock;
 
 @RestController
 @RequestMapping("/api/menu")
@@ -29,6 +30,7 @@ public class MenuItemController {
 
     /** Staff: list every item including unavailable ones. */
     @GetMapping("/all")
+    @StaffLock
     public List<MenuItem> listAll() {
         return menuItems.findAll();
     }
@@ -36,6 +38,7 @@ public class MenuItemController {
     /** Staff: add a new menu item. */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @StaffLock
     public MenuItem create(@Valid @RequestBody MenuItemRequest req) {
         MenuItem item = new MenuItem(req.name(), req.regularPrice(), req.largePrice(), req.category());
         item.setDescription(req.description());
@@ -44,6 +47,7 @@ public class MenuItemController {
 
     /** Staff: edit an existing menu item's details or prices. */
     @PutMapping("/{id}")
+    @StaffLock
     public MenuItem update(@PathVariable Long id, @Valid @RequestBody MenuItemRequest req) {
         MenuItem item = findOrThrow(id);
         item.setName(req.name());
@@ -56,6 +60,7 @@ public class MenuItemController {
 
     /** Staff: mark item unavailable (out of stock) or available again. */
     @PatchMapping("/{id}/availability")
+    @StaffLock
     public MenuItem setAvailability(@PathVariable Long id, @RequestParam boolean available) {
         MenuItem item = findOrThrow(id);
         item.setAvailable(available);
@@ -65,6 +70,7 @@ public class MenuItemController {
     /** Staff: remove a menu item permanently. */
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @StaffLock
     public void delete(@PathVariable Long id) {
         menuItems.deleteById(id);
     }

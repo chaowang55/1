@@ -1,5 +1,6 @@
 package uk.ac.ncl.csc8019.team4.order;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -165,7 +166,8 @@ class OrderControllerTest extends BaseIntegrationTest {
         Integer id = createOrderAndReturnId();
 
         // PENDING -> ACCEPTED is the first allowed transition
-        mockMvc.perform(patch("/api/orders/" + id + "/status?status=ACCEPTED"))
+        mockMvc.perform(patch("/api/orders/" + id + "/status?status=ACCEPTED")
+                        .with(user("Admin").roles("STAFF")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("ACCEPTED"));
     }
@@ -181,6 +183,7 @@ class OrderControllerTest extends BaseIntegrationTest {
         """;
 
         mockMvc.perform(patch("/api/orders/" + id + "/cancel")
+                        .with(user("Admin").roles("STAFF"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isOk())

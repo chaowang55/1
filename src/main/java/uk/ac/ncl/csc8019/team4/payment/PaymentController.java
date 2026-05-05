@@ -4,6 +4,7 @@ import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import uk.ac.ncl.csc8019.team4.auth.StaffLock;
 
 @RestController
 @RequestMapping("/api/orders/{orderId}/payments")
@@ -24,6 +25,7 @@ public class PaymentController {
     }
 
     @PostMapping("/mark-paid")
+    @StaffLock
     public Payment markPaid(@PathVariable Long orderId, @RequestBody MarkPaidRequest req) {
         return paymentService.markPaidManually(orderId, req.reference());
     }

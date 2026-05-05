@@ -4,6 +4,7 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import uk.ac.ncl.csc8019.team4.auth.StaffLock;
 
 @RestController
 @RequestMapping("/api/locations")
@@ -21,6 +22,7 @@ public class KioskLocationController {
     }
 
     @PatchMapping("/{id}/status")
+    @StaffLock
     public KioskLocation updateStatus(@PathVariable Long id, @RequestParam OperatingStatus status) {
         KioskLocation location = locations
                 .findById(id)
