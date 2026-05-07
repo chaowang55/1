@@ -6,7 +6,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -23,7 +23,7 @@ import uk.ac.ncl.csc8019.team4.payment.PaymentStatus;
 
 @RestController
 @RequestMapping("/api/orders")
-    @CrossOrigin(origins = "*") 
+    @CrossOrigin(origins = "*")
 public class OrderController {
 
     private static final List<OrderStatus> ARCHIVED_STATUSES = List.of(OrderStatus.COLLECTED, OrderStatus.CANCELLED);

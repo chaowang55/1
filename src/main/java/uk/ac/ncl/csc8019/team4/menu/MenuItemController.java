@@ -10,9 +10,9 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-
+import org.springframework.web.bind.annotation.CrossOrigin;
 @RestController
-    @CrossOrigin(origins = "*") 
+    @CrossOrigin(origins = "*")
 @RequestMapping("/api/menu")
 public class MenuItemController {
 
