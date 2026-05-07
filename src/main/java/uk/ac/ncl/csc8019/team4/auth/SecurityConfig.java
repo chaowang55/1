@@ -36,7 +36,9 @@ public class SecurityConfig {
 
         config.setAllowedOrigins(List.of(
             "https://frontpage-two.vercel.app",
-            "http://localhost:3000"
+    "https://frontpage-git-main-chaowang55s-projects.vercel.app",
+    "https://frontpage-fdnsng8mn-chaowang55s-projects.vercel.app",
+    "http://localhost:3000"
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
