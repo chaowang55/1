@@ -10,6 +10,7 @@ import uk.ac.ncl.csc8019.team4.auth.Principal;
 
 @RestController
 @RequestMapping("/api/users")
+    @CrossOrigin(origins = "*") 
 public class UserController {
 
     private final UserRepository users;
