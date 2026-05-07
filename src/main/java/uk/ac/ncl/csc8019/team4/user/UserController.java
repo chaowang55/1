@@ -2,7 +2,6 @@ package uk.ac.ncl.csc8019.team4.user;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -11,7 +10,7 @@ import uk.ac.ncl.csc8019.team4.auth.Principal;
 
 @RestController
 @RequestMapping("/api/users")
-    @CrossOrigin(origins = "*")
+
 public class UserController {
 
     private final UserRepository users;
