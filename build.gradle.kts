@@ -23,29 +23,25 @@ repositories {
 }
 
 dependencies {
-    // Spring Boot 核心
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-validation")
 
-    // JJWT 新版（适配你的代码）
     implementation("io.jsonwebtoken:jjwt-api:0.12.6")
     implementation("io.jsonwebtoken:jjwt-impl:0.12.6")
     implementation("io.jsonwebtoken:jjwt-jackson:0.12.6")
 
-    // 数据库驱动（全部补全正确版本）
+
     runtimeOnly("com.h2database:h2:2.2.224")
     runtimeOnly("mysql:mysql-connector-java:8.0.33")
 
-    // Lombok
+
     implementation("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
 
-    // BCrypt
+
     implementation("org.mindrot:jbcrypt:0.4")
 
-    // 测试
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
 }
