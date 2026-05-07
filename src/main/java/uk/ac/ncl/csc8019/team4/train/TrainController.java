@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 @RestController
 @RequestMapping("/api/trains")
+    @CrossOrigin(origins = "*") 
 public class TrainController {
 
     private final TrainService trainService;
