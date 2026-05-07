@@ -19,35 +19,32 @@ repositories {
 }
 
 dependencies {
-
+    // Spring 核心
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-security")
-    
-
     implementation("org.springframework.boot:spring-boot-starter-validation")
 
+    // ✅ 修复 JJWT 报错（升级到新版，和你的代码完全匹配）
+    implementation("io.jsonwebtoken:jjwt-api:0.12.6")
+    implementation("io.jsonwebtoken:jjwt-impl:0.12.6")
+    implementation("io.jsonwebtoken:jjwt-jackson:0.12.6")
 
-    implementation("io.jsonwebtoken:jjwt-api:0.11.5")
-    runtimeOnly("io.jsonwebtoken:jjwt-impl:0.11.5")
-    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.11.5")
-
-
+    // 数据库
     runtimeOnly("com.h2database:h2")
     runtimeOnly("mysql:mysql-connector-java")
 
-
+    // Lombok
     implementation("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
 
-   
+    // BCrypt 密码加密
     implementation("org.mindrot:jbcrypt:0.4")
 
-  
+    // 测试
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
 }
-
 spotless {
     java {
         palantirJavaFormat()
